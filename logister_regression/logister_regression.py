@@ -1,11 +1,12 @@
 '''
 逻辑回归解决多分类问题
 数据集划分方法：留出法
-优化后的代价：
-精度：
-查全率：
-查准率：
-F1 score:
+精度： 0.973333
+查全率： [1.0, 0.96, 0.96]
+查准率： [1.0, 0.96, 0.96]
+F1 score: [1.0, 0.96, 0.96]
+Micro-F1：0.973333
+Micro-F2：0.973333
 AUC：
 '''
 
@@ -90,13 +91,79 @@ def get_all_theta(X, y, K):
 
 
 
-def predict(all_theta, X, ):
+def predict(all_theta, X):
     '''获得预测结果'''
 
     h_x = sigmoid(np.dot(X, all_theta.T))
     predictions = np.argmax(h_x, axis=1)    # 获取最大值对应的索引，即label
 
     return predictions    # 返回预测值
+
+
+
+def evaluate(final_theta, X, y, K):
+    '''对模型进行性能评估'''
+
+    '''计算精度'''
+    predictions = predict(final_theta, X)
+    correct = [1 if a == b else 0 for (a, b) in zip(predictions, y)]
+    accuracy = sum(correct) / len(X)
+    '''计算查全率P，查准率R，F1，Micro-F1和Macro-F1'''
+    P = []
+    R = []
+    sum_P = 0
+    sum_R = 0
+    F1 = []
+    for i in range(K):
+        '''对每一个标签计算数值'''
+        index = np.array(np.where(y == i))    # 所有i标签的索引
+        correct_2 = [1 if example == i else 0 for example in predictions[index][0]]
+        tem_R = sum(correct_2) / (len(index[0]))    # 查全率
+        R.append(tem_R)
+        index_2 = np.array(np.where(predictions == i))    # 预测值中i标签的索引
+        correct_3 = [1 if example == i else 0 for example in y[index_2][0]]
+        tem_P = sum(correct_3) / (len(index_2[0]))    # 查准率
+        P.append(tem_P)
+        tem_F1 = (2 * tem_P * tem_R) / (tem_P + tem_R)
+        F1.append(tem_F1)
+        sum_P += tem_P
+        sum_R += tem_R
+
+    mean_P = sum_P / len(P)
+    mean_R = sum_R / len(R)
+
+    return accuracy, P, R, F1, (2 * mean_P * mean_R) / (mean_P + mean_R), np.mean(F1)
+
+
+
+def expand_y(y):
+    '''将y的元素标签全部转换为向量'''
+    new_y = []
+    for label in y:
+        y_array = np.zeros(10)
+        y_array[label-1] = 1
+        new_y.append(y_array)
+
+    return np.array(new_y)
+
+
+
+
+
+
+def get_ROC_AUC(final_theta, X, y):
+    '''绘制ROC曲线与计算AUC'''
+
+    z = np.dot(X, final_theta.T)
+    probability = sigmoid(z)    # 概率矩阵
+    y_vector = expand_y(y)    # 向量化的y
+
+    for i in range(y.shape[0]):
+        '''每一次循环选择一个点作为阀值'''
+
+
+
+    return AUC
 
 
 # 得到特征，标签，标签种类数
@@ -107,17 +174,22 @@ final_theta = get_all_theta(X, y, K)
 
 print("优化后的theta：")
 print(final_theta)
-print("初始代价： %f" % compute_all_cost(np.zeros((K, X.shape[1])), X, y))
-print("最终代价： %f" % compute_all_cost(final_theta, X, y))
+# print("初始代价： %f" % compute_all_cost(np.zeros((K, X.shape[1])), X, y))
+# print("最终代价： %f" % compute_all_cost(final_theta, X, y))
 
-'''计算精度'''
-predictions = predict(final_theta, X)
-correct = [1 if a==b else 0 for (a, b) in zip(predictions, y)]
-accuracy = sum(correct) / len(X)
+
+'''计算查全率P，查准率R，F1，Micro-F1和Macro-F1'''
+accuracy, P, R, F1, Micro_F1, Micro_F2 = evaluate(final_theta, X, y, K)
 print("精度：%f" % accuracy)
-
-'''计算查全率，查准率，F1'''
-
-
+print("查准率："),
+print(P)
+print("查全率"),
+print(R)
+print("F1 score："),
+print(F1)
+print("Micro-F1：%f" % Micro_F1)
+print("Micro-F2：%f" % Micro_F2)
 
 '''绘制ROC，计算AUC'''
+AUC = get_ROC_AUC(final_theta, X, y)
+print("AUC：%f" % AUC)
