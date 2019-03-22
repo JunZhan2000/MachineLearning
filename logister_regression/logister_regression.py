@@ -7,7 +7,7 @@
 F1 score: [1.0, 0.96, 0.96]
 Micro-F1：0.973333
 Micro-F2：0.973333
-AUC：
+AUC：[1.000000, 0.828400, 0.997600]
 '''
 
 
@@ -77,6 +77,7 @@ def gradient_descent(X, y, theta, alpha, epoch):
 def get_all_theta(X, y, K):
     '''获取优化后的theta矩阵'''
     '''X是特征，y是标签，K是标签种类数'''
+
 
     all_theta = np.zeros((K, X.shape[1]))
 
@@ -151,19 +152,76 @@ def expand_y(y):
 
 
 
-def get_ROC_AUC(final_theta, X, y):
+def get_ROC_AUC(final_theta, X, y, K):
     '''绘制ROC曲线与计算AUC'''
 
     z = np.dot(X, final_theta.T)
     probability = sigmoid(z)    # 概率矩阵
-    y_vector = expand_y(y)    # 向量化的y
+    # figure, ax = plt.subplot()    # 画板与画纸
+    fig, ax = plt.subplots(figsize=(8, 5))
+    AUC = [0, 0, 0]
+    for i in range(K):
+        '''对每一种标签进行一次循环'''
+        tem_probability = probability[:, i]
+        tem_y = np.array([1 if label == i else 0 for label in y])  # 获取是i与非i的标签数组
+        '''将预测值和实际标签一起重新排序'''
+        tem_probability = list(tem_probability)
+        tem_y = list(tem_y)
+        ZIP = zip(tem_probability, tem_y)    # 捆绑
+        ZIP = sorted(ZIP, reverse=True)
+        tem_probability, tem_y = zip(*ZIP)
+        tem_probability = np.array(tem_probability)
+        tem_y = np.array(tem_y)
+        ''''''
+        m_t = np.sum(tem_y == 1)     # 所有的正例
+        m_f = np.sum(tem_y == 0)     # 所有的反例
+        TPR = np.zeros(y.shape[0]+1)    # 初始化TPR
+        FPR = np.zeros(y.shape[0]+1)  # 初始化FPR
+        for j in range(y.shape[0]):
+            '''每一次循环选择一个点作为阀值'''
+            if tem_y[j] == 1:
+                '''如果当前为真正例'''
+                TPR[j+1] = TPR[j] + 1 / m_t
+                FPR[j+1] = FPR[j]
+            elif tem_y[j] == 0:
+                '''当前为假正例'''
+                FPR[j+1] = FPR[j] + 1 / m_f
+                TPR[j+1] = TPR[j]
+            if j == 48:
+                a = 1
+        '''绘制曲线'''
+        if i == 0:
+            the_color = 'r'
+            the_label = '0'
+        elif i == 1:
+            the_color = 'y'
+            the_label = '1'
+        else:
+            the_color = 'b'
+            the_label = '2'
 
-    for i in range(y.shape[0]):
-        '''每一次循环选择一个点作为阀值'''
+        # ax.scatter(FPR, TPR, s=50, c=color, label=the_label)
+        ax.plot(FPR, TPR, color=the_color, lw=2, label=the_label)  ###假正率为横坐标，真正率为纵坐标做曲线
+        ele_1 = np.zeros(y.shape[0])
+        ele_2 = np.zeros(y.shape[0])
+        for j in range(y.shape[0]):
+            ele_1[j] = FPR[j+1] - FPR[j]
+            ele_2[j] = TPR[j+1] + TPR[j]
+        AUC[i] = np.dot(ele_1, ele_2.T) / 2
 
 
+
+    plt.xlim((0, 1))
+    plt.ylim((0, 1))
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC曲线')
+    plt.legend()
+    plt.show()
 
     return AUC
+
+
 
 
 # 得到特征，标签，标签种类数
@@ -191,5 +249,7 @@ print("Micro-F1：%f" % Micro_F1)
 print("Micro-F2：%f" % Micro_F2)
 
 '''绘制ROC，计算AUC'''
-AUC = get_ROC_AUC(final_theta, X, y)
-print("AUC：%f" % AUC)
+AUC = get_ROC_AUC(final_theta, X, y, K)
+print("AUC：")
+for i in range(K):
+    print("%5f" % AUC[i])
